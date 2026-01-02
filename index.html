@@ -6,8 +6,6 @@
     <title>FreshFruits - Premium Fruit Delivery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -345,23 +343,14 @@
     </footer>
 
     <script>
-        // Initialize Supabase client FIRST
-        const supabase = window.supabase.createClient(
-            "https://pqprjbgzmxgefcqugdyl.supabase.co",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
-        );
-
+        // First, let's create a simple version without Supabase to test basic functionality
         // Global state
         let cart = [];
         let wishlist = [];
         let currentUser = null;
         let currentCategory = 'all';
-        let currentSearch = '';
         let orders = [];
         
-        // Admin configuration
-        const ADMIN_EMAIL = "raselshikdar597@gmail.com";
-
         // Mock fruit data
         const fruits = [
             {
@@ -369,7 +358,7 @@
                 name: 'Organic Strawberries',
                 price: 4.99,
                 originalPrice: 6.99,
-                image: 'https://placehold.co/300x300/ff6b8b/ffffff?text=Strawberries',
+                image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=300&fit=crop',
                 category: 'berries',
                 rating: 4.8,
                 reviews: 124,
@@ -381,7 +370,7 @@
                 name: 'Premium Apples',
                 price: 3.49,
                 originalPrice: 4.29,
-                image: 'https://placehold.co/300x300/ff9f43/ffffff?text=Apples',
+                image: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=400&h=300&fit=crop',
                 category: 'fruits',
                 rating: 4.6,
                 reviews: 89,
@@ -393,7 +382,7 @@
                 name: 'Ripe Bananas',
                 price: 1.99,
                 originalPrice: 2.49,
-                image: 'https://placehold.co/300x300/feca57/ffffff?text=Bananas',
+                image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w-400&h=300&fit=crop',
                 category: 'fruits',
                 rating: 4.7,
                 reviews: 203,
@@ -405,7 +394,7 @@
                 name: 'Sweet Cherries',
                 price: 8.99,
                 originalPrice: 12.99,
-                image: 'https://placehold.co/300x300/ff4757/ffffff?text=Cherries',
+                image: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?w=400&h=300&fit=crop',
                 category: 'berries',
                 rating: 4.9,
                 reviews: 67,
@@ -417,7 +406,7 @@
                 name: 'Fresh Blueberries',
                 price: 5.49,
                 originalPrice: 6.99,
-                image: 'https://placehold.co/300x300/3742fa/ffffff?text=Blueberries',
+                image: 'https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=400&h=300&fit=crop',
                 category: 'berries',
                 rating: 4.5,
                 reviews: 156,
@@ -429,7 +418,7 @@
                 name: 'Tropical Mangoes',
                 price: 4.29,
                 originalPrice: 5.49,
-                image: 'https://placehold.co/300x300/ffa502/ffffff?text=Mangoes',
+                image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=400&h=300&fit=crop',
                 category: 'tropical',
                 rating: 4.4,
                 reviews: 92,
@@ -441,7 +430,7 @@
                 name: 'Green Grapes',
                 price: 3.99,
                 originalPrice: 4.99,
-                image: 'https://placehold.co/300x300/2ed573/ffffff?text=Grapes',
+                image: 'https://images.unsplash.com/photo-1515777315835-2818e3c139b5?w=400&h=300&fit=crop',
                 category: 'fruits',
                 rating: 4.3,
                 reviews: 78,
@@ -453,7 +442,7 @@
                 name: 'Organic Oranges',
                 price: 2.99,
                 originalPrice: 3.79,
-                image: 'https://placehold.co/300x300/ff9ff3/ffffff?text=Oranges',
+                image: 'https://images.unsplash.com/photo-1547514701-42782101795e?w=400&h=300&fit=crop',
                 category: 'citrus',
                 rating: 4.7,
                 reviews: 145,
@@ -464,10 +453,12 @@
 
         // Initialize the app
         function init() {
+            console.log('Initializing app...');
             renderProducts();
             updateCartUI();
             updateWishlistUI();
             updateAuthUI();
+            console.log('App initialized successfully');
         }
 
         // Product filtering and rendering
@@ -525,8 +516,8 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <span class="text-2xl font-bold text-green-600">$${fruit.price}</span>
-                                ${hasDiscount ? `<span class="text-gray-400 line-through ml-2">$${fruit.originalPrice}</span>` : ''}
+                                <span class="text-2xl font-bold text-green-600">$${fruit.price.toFixed(2)}</span>
+                                ${hasDiscount ? `<span class="text-gray-400 line-through ml-2">$${fruit.originalPrice.toFixed(2)}</span>` : ''}
                                 <p class="text-sm text-gray-500">${fruit.weight}</p>
                             </div>
                             <button onclick="addToCart(${fruit.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
@@ -537,18 +528,23 @@
                 `;
                 container.appendChild(productCard);
             });
+            
+            console.log(`Rendered ${filteredFruits.length} products`);
         }
 
         // Wishlist functions
         function toggleWishlistItem(fruitId) {
+            console.log('Toggling wishlist item:', fruitId);
             const fruit = fruits.find(f => f.id === fruitId);
             if (!fruit) return;
             
             const index = wishlist.findIndex(item => item.id === fruitId);
             if (index === -1) {
                 wishlist.push(fruit);
+                console.log('Added to wishlist:', fruit.name);
             } else {
                 wishlist.splice(index, 1);
+                console.log('Removed from wishlist:', fruit.name);
             }
             
             updateWishlistUI();
@@ -563,6 +559,7 @@
             } else {
                 wishlistCount.classList.add('hidden');
             }
+            console.log('Wishlist updated:', wishlist.length, 'items');
         }
 
         function renderWishlist() {
@@ -604,8 +601,8 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <span class="text-2xl font-bold text-green-600">$${fruit.price}</span>
-                                ${hasDiscount ? `<span class="text-gray-400 line-through ml-2">$${fruit.originalPrice}</span>` : ''}
+                                <span class="text-2xl font-bold text-green-600">$${fruit.price.toFixed(2)}</span>
+                                ${hasDiscount ? `<span class="text-gray-400 line-through ml-2">$${fruit.originalPrice.toFixed(2)}</span>` : ''}
                                 <p class="text-sm text-gray-500">${fruit.weight}</p>
                             </div>
                             <button onclick="addToCart(${fruit.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
@@ -616,6 +613,8 @@
                 `;
                 container.appendChild(productCard);
             });
+            
+            console.log('Rendered wishlist with', wishlist.length, 'items');
         }
 
         function toggleWishlist() {
@@ -626,14 +625,18 @@
                 shopSection.classList.add('hidden');
                 wishlistSection.classList.remove('hidden');
                 renderWishlist();
+                console.log('Showing wishlist');
             } else {
                 shopSection.classList.remove('hidden');
                 wishlistSection.classList.add('hidden');
+                console.log('Showing shop');
             }
         }
 
         // Cart functions
-        async function addToCart(fruitId) {
+        function addToCart(fruitId) {
+            console.log('Adding to cart:', fruitId);
+            
             if (!currentUser) {
                 showAuthModal('login');
                 return;
@@ -647,35 +650,17 @@
                 cart.push({ ...fruit, quantity: 1 });
             }
             
-            try {
-                await supabase.from('cart_items').upsert({
-                    user_id: currentUser.id,
-                    product_id: fruitId,
-                    quantity: cart.find(i => i.id === fruitId).quantity
-                });
-            } catch (error) {
-                console.error('Error saving cart to Supabase:', error);
-            }
-            
             updateCartUI();
+            console.log('Cart updated:', cart);
         }
 
-        async function removeFromCart(fruitId) {
+        function removeFromCart(fruitId) {
             cart = cart.filter(item => item.id !== fruitId);
-            if (currentUser) {
-                try {
-                    await supabase.from('cart_items')
-                        .delete()
-                        .eq('user_id', currentUser.id)
-                        .eq('product_id', fruitId);
-                } catch (error) {
-                    console.error('Error removing from cart:', error);
-                }
-            }
             updateCartUI();
+            console.log('Removed from cart:', fruitId);
         }
 
-        async function updateQuantity(fruitId, newQuantity) {
+        function updateQuantity(fruitId, newQuantity) {
             if (newQuantity <= 0) {
                 removeFromCart(fruitId);
                 return;
@@ -684,20 +669,9 @@
             const item = cart.find(item => item.id === fruitId);
             if (item) {
                 item.quantity = newQuantity;
-                if (currentUser) {
-                    try {
-                        await supabase.from('cart_items')
-                            .upsert({
-                                user_id: currentUser.id,
-                                product_id: fruitId,
-                                quantity: newQuantity
-                            });
-                    } catch (error) {
-                        console.error('Error updating quantity:', error);
-                    }
-                }
                 updateCartUI();
             }
+            console.log('Updated quantity:', fruitId, 'to', newQuantity);
         }
 
         function updateCartUI() {
@@ -754,15 +728,19 @@
                 `;
                 checkoutCartItems.appendChild(checkoutItem);
             });
+            
+            console.log('Cart UI updated:', totalItems, 'items, $', totalPrice.toFixed(2));
         }
 
         function toggleCart() {
             const cartSidebar = document.getElementById('cart-sidebar');
             cartSidebar.classList.toggle('hidden');
+            console.log('Cart toggled');
         }
 
         // Authentication functions
         function showAuthModal(mode) {
+            console.log('Showing auth modal:', mode);
             const authModal = document.getElementById('auth-modal');
             const authTitle = document.getElementById('auth-title');
             const loginForm = document.getElementById('login-form');
@@ -800,13 +778,16 @@
                 toggleBtn.textContent = 'Already have an account? Login';
                 document.getElementById('auth-title').textContent = 'Register';
             }
+            console.log('Toggled auth form');
         }
 
         function closeAuthModal() {
             document.getElementById('auth-modal').classList.add('hidden');
+            console.log('Closed auth modal');
         }
 
-        async function handleLogin() {
+        function handleLogin() {
+            console.log('Handling login');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
@@ -815,30 +796,21 @@
                 return;
             }
 
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
-                });
-
-                if (error) {
-                    alert(error.message);
-                    return;
-                }
-
-                currentUser = data.user;
-                updateAuthUI();
-                closeAuthModal();
-                
-                // Load user's cart after login
-                loadCartFromSupabase();
-            } catch (error) {
-                console.error('Login error:', error);
-                alert('Login failed. Please try again.');
-            }
+            // Mock login for testing
+            currentUser = {
+                id: 1,
+                email: email,
+                user_metadata: { name: email.split('@')[0] }
+            };
+            
+            updateAuthUI();
+            closeAuthModal();
+            alert('Login successful (mock)');
+            console.log('User logged in:', currentUser.email);
         }
 
-        async function handleRegister() {
+        function handleRegister() {
+            console.log('Handling register');
             const name = document.getElementById('register-name').value;
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
@@ -848,33 +820,22 @@
                 return;
             }
 
-            try {
-                const { data, error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: {
-                            name: name
-                        }
-                    }
-                });
-
-                if (error) {
-                    alert(error.message);
-                    return;
-                }
-
-                alert("Account created successfully! Please login.");
-                toggleAuthForm();
-                
-                // Clear form
-                document.getElementById('register-name').value = '';
-                document.getElementById('register-email').value = '';
-                document.getElementById('register-password').value = '';
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert('Registration failed. Please try again.');
-            }
+            // Mock registration for testing
+            currentUser = {
+                id: 1,
+                email: email,
+                user_metadata: { name: name }
+            };
+            
+            alert("Account created successfully! (mock)");
+            toggleAuthForm();
+            
+            // Clear form
+            document.getElementById('register-name').value = '';
+            document.getElementById('register-email').value = '';
+            document.getElementById('register-password').value = '';
+            
+            console.log('User registered:', currentUser.email);
         }
 
         function updateAuthUI() {
@@ -891,64 +852,22 @@
                 userSection.classList.add('hidden');
                 authSection.classList.remove('hidden');
             }
+            console.log('Auth UI updated, user logged in:', !!currentUser);
         }
 
-        function isAdmin() {
-            return currentUser && currentUser.email === ADMIN_EMAIL;
-        }
-
-        async function logout() {
-            try {
-                await supabase.auth.signOut();
-                currentUser = null;
-                cart = [];
-                wishlist = [];
-                updateAuthUI();
-                updateCartUI();
-                updateWishlistUI();
-                location.reload();
-            } catch (error) {
-                console.error('Logout error:', error);
-                location.reload();
-            }
-        }
-
-        async function restoreSession() {
-            try {
-                const { data } = await supabase.auth.getSession();
-                if (data.session) {
-                    currentUser = data.session.user;
-                    updateAuthUI();
-                    loadCartFromSupabase();
-                }
-            } catch (error) {
-                console.error('Session restore error:', error);
-            }
-        }
-
-        async function loadCartFromSupabase() {
-            if (!currentUser) return;
-            
-            try {
-                const { data } = await supabase
-                    .from('cart_items')
-                    .select('*')
-                    .eq('user_id', currentUser.id);
-                
-                if (data) {
-                    cart = data.map(row => {
-                        const fruit = fruits.find(f => f.id === row.product_id);
-                        return fruit ? { ...fruit, quantity: row.quantity } : null;
-                    }).filter(item => item !== null);
-                    updateCartUI();
-                }
-            } catch (error) {
-                console.error('Error loading cart:', error);
-            }
+        function logout() {
+            currentUser = null;
+            cart = [];
+            wishlist = [];
+            updateAuthUI();
+            updateCartUI();
+            updateWishlistUI();
+            console.log('User logged out');
         }
 
         // Checkout functions
         function checkout() {
+            console.log('Checkout initiated');
             if (cart.length === 0) {
                 alert('Your cart is empty!');
                 return;
@@ -967,13 +886,16 @@
             
             updateCartUI();
             document.getElementById('checkout-modal').classList.remove('hidden');
+            console.log('Checkout modal opened');
         }
 
         function closeCheckoutModal() {
             document.getElementById('checkout-modal').classList.add('hidden');
+            console.log('Checkout modal closed');
         }
 
-        async function placeOrder() {
+        function placeOrder() {
+            console.log('Placing order');
             const name = document.getElementById('checkout-name').value;
             const email = document.getElementById('checkout-email').value;
             const phone = document.getElementById('checkout-phone').value;
@@ -986,45 +908,9 @@
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
-            // Save order to Supabase with customer info
-            const { data: order, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                    user_id: currentUser.id,
-                    total: total,
-                    status: 'pending',
-                    payment_method: 'cash',
-                    customer_name: name,
-                    customer_email: email,
-                    customer_phone: phone,
-                    customer_address: address
-                })
-                .select()
-                .single();
-            
-            if (orderError) {
-                alert('Failed to save order: ' + orderError.message);
-                return;
-            }
-            
-            // Save order items
-            for (const item of cart) {
-                await supabase.from('order_items').insert({
-                    order_id: order.id,
-                    product_id: item.id,
-                    quantity: item.quantity,
-                    price: item.price
-                });
-            }
-            
-            // Clear cart from Supabase
-            await supabase.from('cart_items')
-                .delete()
-                .eq('user_id', currentUser.id);
-            
-            // Local order record
+            // Create order record
             const newOrder = {
-                id: order.id,
+                id: Date.now(),
                 items: [...cart],
                 total: total,
                 status: 'pending',
@@ -1038,16 +924,20 @@
             updateCartUI();
             closeCheckoutModal();
             document.getElementById('confirmation-modal').classList.remove('hidden');
+            
+            console.log('Order placed:', newOrder);
         }
 
         function closeConfirmationModal() {
             document.getElementById('confirmation-modal').classList.add('hidden');
+            console.log('Confirmation modal closed');
         }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing...');
             init();
-            restoreSession();
+            console.log('App ready!');
         });
     </script>
 </body>
