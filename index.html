@@ -345,13 +345,12 @@
     </footer>
 
     <script>
-        // ⚠️ SECURITY WARNING: You should NEVER expose Supabase credentials in frontend code
-        // In production, use environment variables or a backend server
-        // For now, I'll initialize Supabase properly
-        
-        // Initialize Supabase client (moved to the bottom to avoid conflicts)
-        let supabase;
-        
+        // Initialize Supabase client FIRST
+        const supabase = window.supabase.createClient(
+            "https://pqprjbgzmxgefcqugdyl.supabase.co",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
+        );
+
         // Global state
         let cart = [];
         let wishlist = [];
@@ -465,12 +464,6 @@
 
         // Initialize the app
         function init() {
-            // Initialize Supabase here to ensure it loads after DOM
-            supabase = supabase.createClient(
-                "https://pqprjbgzmxgefcqugdyl.supabase.co",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
-            );
-            
             renderProducts();
             updateCartUI();
             updateWishlistUI();
@@ -654,16 +647,14 @@
                 cart.push({ ...fruit, quantity: 1 });
             }
             
-            if (supabase) {
-                try {
-                    await supabase.from('cart_items').upsert({
-                        user_id: currentUser.id,
-                        product_id: fruitId,
-                        quantity: cart.find(i => i.id === fruitId).quantity
-                    });
-                } catch (error) {
-                    console.error('Error saving cart to Supabase:', error);
-                }
+            try {
+                await supabase.from('cart_items').upsert({
+                    user_id: currentUser.id,
+                    product_id: fruitId,
+                    quantity: cart.find(i => i.id === fruitId).quantity
+                });
+            } catch (error) {
+                console.error('Error saving cart to Supabase:', error);
             }
             
             updateCartUI();
@@ -671,7 +662,7 @@
 
         async function removeFromCart(fruitId) {
             cart = cart.filter(item => item.id !== fruitId);
-            if (currentUser && supabase) {
+            if (currentUser) {
                 try {
                     await supabase.from('cart_items')
                         .delete()
@@ -693,7 +684,7 @@
             const item = cart.find(item => item.id === fruitId);
             if (item) {
                 item.quantity = newQuantity;
-                if (currentUser && supabase) {
+                if (currentUser) {
                     try {
                         await supabase.from('cart_items')
                             .upsert({
@@ -936,7 +927,7 @@
         }
 
         async function loadCartFromSupabase() {
-            if (!currentUser || !supabase) return;
+            if (!currentUser) return;
             
             try {
                 const { data } = await supabase
@@ -994,11 +985,6 @@
             }
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            if (!supabase) {
-                alert('Database connection error. Please try again.');
-                return;
-            }
             
             // Save order to Supabase with customer info
             const { data: order, error: orderError } = await supabase
