@@ -6,6 +6,14 @@
     <title>FreshFruits - Premium Fruit Delivery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        const supabase = supabase.createClient(
+            "https://pqprjbgzmxgefcqugdyl.supabase.co",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
+        );
+    </script>
     <script>
         tailwind.config = {
             theme: {
@@ -630,54 +638,41 @@
             document.getElementById('auth-modal').classList.add('hidden');
         }
 
-        function handleLogin() {
+        async function handleLogin() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            
-            if (email && password) {
-                // Mock login - create a user
-                currentUser = {
-                    id: 1,
-                    name: 'John Doe',
-                    email: email,
-                    phone: '+1234567890',
-                    address: '123 Main St, City, State'
-                };
-                
-                updateAuthUI();
-                closeAuthModal();
-                
-                // Fill checkout form with user data
-                document.getElementById('checkout-name').value = currentUser.name;
-                document.getElementById('checkout-email').value = currentUser.email;
-                document.getElementById('checkout-phone').value = currentUser.phone;
-                document.getElementById('checkout-address').value = currentUser.address;
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                alert(error.message);
+                return;
             }
+
+            currentUser = data.user;
+            updateAuthUI();
+            closeAuthModal();
         }
 
-        function handleRegister() {
-            const name = document.getElementById('register-name').value;
+        async function handleRegister() {
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
-            
-            if (name && email && password) {
-                currentUser = {
-                    id: 1,
-                    name: name,
-                    email: email,
-                    phone: '+1234567890',
-                    address: '123 Main St, City, State'
-                };
-                
-                updateAuthUI();
-                closeAuthModal();
-                
-                // Fill checkout form with user data
-                document.getElementById('checkout-name').value = currentUser.name;
-                document.getElementById('checkout-email').value = currentUser.email;
-                document.getElementById('checkout-phone').value = currentUser.phone;
-                document.getElementById('checkout-address').value = currentUser.address;
+
+            const { error } = await supabase.auth.signUp({
+                email,
+                password
+            });
+
+            if (error) {
+                alert(error.message);
+                return;
             }
+
+            alert("Account created. Please login.");
+            toggleAuthForm();
         }
 
         function updateAuthUI() {
@@ -688,18 +683,24 @@
             if (currentUser) {
                 userSection.classList.remove('hidden');
                 authSection.classList.add('hidden');
-                welcomeText.textContent = `Hi, ${currentUser.name.split(' ')[0]}!`;
+                welcomeText.textContent = `Hi, ${currentUser.email.split('@')[0]}!`;
             } else {
                 userSection.classList.add('hidden');
                 authSection.classList.remove('hidden');
             }
         }
 
-        function logout() {
-            currentUser = null;
-            cart = [];
-            updateAuthUI();
-            updateCartUI();
+        async function logout() {
+            await supabase.auth.signOut();
+            location.reload();
+        }
+
+        async function restoreSession() {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+                currentUser = data.session.user;
+                updateAuthUI();
+            }
         }
 
         // Checkout functions
@@ -714,12 +715,11 @@
                 return;
             }
             
-            // Fill form with user data if available
+            // Fill form with user data if available (now from Supabase user metadata)
             if (currentUser) {
-                document.getElementById('checkout-name').value = currentUser.name;
+                document.getElementById('checkout-name').value = currentUser.user_metadata?.name || currentUser.email.split('@')[0];
                 document.getElementById('checkout-email').value = currentUser.email;
-                document.getElementById('checkout-phone').value = currentUser.phone;
-                document.getElementById('checkout-address').value = currentUser.address;
+                // Phone and address will need to be filled by user or from user profile
             }
             
             updateCartUI();
@@ -764,7 +764,10 @@
         }
 
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            restoreSession();
+        });
     </script>
 </body>
 </html>
