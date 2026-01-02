@@ -343,7 +343,9 @@
     </footer>
 
     <script>
-        // First, let's create a simple version without Supabase to test basic functionality
+        // Load Supabase dynamically to avoid conflicts
+        let supabase = null;
+        
         // Global state
         let cart = [];
         let wishlist = [];
@@ -382,7 +384,7 @@
                 name: 'Ripe Bananas',
                 price: 1.99,
                 originalPrice: 2.49,
-                image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w-400&h=300&fit=crop',
+                image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=300&fit=crop',
                 category: 'fruits',
                 rating: 4.7,
                 reviews: 203,
@@ -452,13 +454,51 @@
         ];
 
         // Initialize the app
-        function init() {
+        async function init() {
             console.log('Initializing app...');
+            
+            // Load Supabase
+            await loadSupabase();
+            
             renderProducts();
             updateCartUI();
             updateWishlistUI();
             updateAuthUI();
             console.log('App initialized successfully');
+        }
+
+        // Load Supabase asynchronously
+        async function loadSupabase() {
+            return new Promise((resolve) => {
+                // Check if Supabase is already loaded
+                if (typeof window.supabase !== 'undefined') {
+                    // Initialize Supabase client
+                    supabase = window.supabase.createClient(
+                        "https://pqprjbgzmxgefcqugdyl.supabase.co",
+                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
+                    );
+                    console.log('Supabase loaded successfully');
+                    resolve();
+                } else {
+                    // Load Supabase script
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/@supabase/supabase-js@2';
+                    script.onload = () => {
+                        supabase = window.supabase.createClient(
+                            "https://pqprjbgzmxgefcqugdyl.supabase.co",
+                            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcHJqYmd6bXhnZWZjcXVnZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNDc1MTUsImV4cCI6MjA4MjkyMzUxNX0._QC8gEuE5ura4By3NQv6qHEcUiHd1agfzmT-3hDZp0U"
+                        );
+                        console.log('Supabase loaded dynamically');
+                        resolve();
+                    };
+                    script.onerror = () => {
+                        console.log('Failed to load Supabase, using mock mode');
+                        supabase = null;
+                        resolve();
+                    };
+                    document.head.appendChild(script);
+                }
+            });
         }
 
         // Product filtering and rendering
@@ -634,7 +674,7 @@
         }
 
         // Cart functions
-        function addToCart(fruitId) {
+        async function addToCart(fruitId) {
             console.log('Adding to cart:', fruitId);
             
             if (!currentUser) {
@@ -650,17 +690,45 @@
                 cart.push({ ...fruit, quantity: 1 });
             }
             
+            // Save to Supabase if available
+            if (supabase && currentUser) {
+                try {
+                    await supabase.from('cart_items').upsert({
+                        user_id: currentUser.id,
+                        product_id: fruitId,
+                        quantity: cart.find(i => i.id === fruitId).quantity
+                    });
+                    console.log('Cart saved to Supabase');
+                } catch (error) {
+                    console.error('Error saving cart to Supabase:', error);
+                }
+            }
+            
             updateCartUI();
             console.log('Cart updated:', cart);
         }
 
-        function removeFromCart(fruitId) {
+        async function removeFromCart(fruitId) {
             cart = cart.filter(item => item.id !== fruitId);
+            
+            // Remove from Supabase if available
+            if (supabase && currentUser) {
+                try {
+                    await supabase.from('cart_items')
+                        .delete()
+                        .eq('user_id', currentUser.id)
+                        .eq('product_id', fruitId);
+                    console.log('Cart item removed from Supabase');
+                } catch (error) {
+                    console.error('Error removing from Supabase:', error);
+                }
+            }
+            
             updateCartUI();
             console.log('Removed from cart:', fruitId);
         }
 
-        function updateQuantity(fruitId, newQuantity) {
+        async function updateQuantity(fruitId, newQuantity) {
             if (newQuantity <= 0) {
                 removeFromCart(fruitId);
                 return;
@@ -669,6 +737,22 @@
             const item = cart.find(item => item.id === fruitId);
             if (item) {
                 item.quantity = newQuantity;
+                
+                // Update Supabase if available
+                if (supabase && currentUser) {
+                    try {
+                        await supabase.from('cart_items')
+                            .upsert({
+                                user_id: currentUser.id,
+                                product_id: fruitId,
+                                quantity: newQuantity
+                            });
+                        console.log('Cart quantity updated in Supabase');
+                    } catch (error) {
+                        console.error('Error updating quantity in Supabase:', error);
+                    }
+                }
+                
                 updateCartUI();
             }
             console.log('Updated quantity:', fruitId, 'to', newQuantity);
@@ -786,7 +870,7 @@
             console.log('Closed auth modal');
         }
 
-        function handleLogin() {
+        async function handleLogin() {
             console.log('Handling login');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
@@ -796,20 +880,48 @@
                 return;
             }
 
-            // Mock login for testing
-            currentUser = {
-                id: 1,
-                email: email,
-                user_metadata: { name: email.split('@')[0] }
-            };
-            
-            updateAuthUI();
-            closeAuthModal();
-            alert('Login successful (mock)');
-            console.log('User logged in:', currentUser.email);
+            if (supabase) {
+                // Real Supabase login
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                    if (error) {
+                        alert('Login failed: ' + error.message);
+                        return;
+                    }
+
+                    currentUser = data.user;
+                    updateAuthUI();
+                    closeAuthModal();
+                    
+                    // Load user's cart from Supabase
+                    await loadCartFromSupabase();
+                    
+                    alert('Login successful!');
+                    console.log('User logged in via Supabase:', currentUser.email);
+                } catch (error) {
+                    console.error('Supabase login error:', error);
+                    alert('Login failed. Please try again.');
+                }
+            } else {
+                // Mock login for testing
+                currentUser = {
+                    id: 1,
+                    email: email,
+                    user_metadata: { name: email.split('@')[0] }
+                };
+                
+                updateAuthUI();
+                closeAuthModal();
+                alert('Login successful (mock mode)');
+                console.log('User logged in (mock):', currentUser.email);
+            }
         }
 
-        function handleRegister() {
+        async function handleRegister() {
             console.log('Handling register');
             const name = document.getElementById('register-name').value;
             const email = document.getElementById('register-email').value;
@@ -820,22 +932,55 @@
                 return;
             }
 
-            // Mock registration for testing
-            currentUser = {
-                id: 1,
-                email: email,
-                user_metadata: { name: name }
-            };
-            
-            alert("Account created successfully! (mock)");
-            toggleAuthForm();
-            
-            // Clear form
-            document.getElementById('register-name').value = '';
-            document.getElementById('register-email').value = '';
-            document.getElementById('register-password').value = '';
-            
-            console.log('User registered:', currentUser.email);
+            if (supabase) {
+                // Real Supabase registration
+                try {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: {
+                                name: name
+                            }
+                        }
+                    });
+
+                    if (error) {
+                        alert('Registration failed: ' + error.message);
+                        return;
+                    }
+
+                    alert("Account created successfully! Please login.");
+                    toggleAuthForm();
+                    
+                    // Clear form
+                    document.getElementById('register-name').value = '';
+                    document.getElementById('register-email').value = '';
+                    document.getElementById('register-password').value = '';
+                    
+                    console.log('User registered via Supabase:', email);
+                } catch (error) {
+                    console.error('Supabase registration error:', error);
+                    alert('Registration failed. Please try again.');
+                }
+            } else {
+                // Mock registration for testing
+                currentUser = {
+                    id: 1,
+                    email: email,
+                    user_metadata: { name: name }
+                };
+                
+                alert("Account created successfully! (mock mode)");
+                toggleAuthForm();
+                
+                // Clear form
+                document.getElementById('register-name').value = '';
+                document.getElementById('register-email').value = '';
+                document.getElementById('register-password').value = '';
+                
+                console.log('User registered (mock):', currentUser.email);
+            }
         }
 
         function updateAuthUI() {
@@ -855,7 +1000,15 @@
             console.log('Auth UI updated, user logged in:', !!currentUser);
         }
 
-        function logout() {
+        async function logout() {
+            if (supabase && currentUser) {
+                try {
+                    await supabase.auth.signOut();
+                } catch (error) {
+                    console.error('Supabase logout error:', error);
+                }
+            }
+            
             currentUser = null;
             cart = [];
             wishlist = [];
@@ -863,6 +1016,44 @@
             updateCartUI();
             updateWishlistUI();
             console.log('User logged out');
+        }
+
+        async function restoreSession() {
+            if (supabase) {
+                try {
+                    const { data } = await supabase.auth.getSession();
+                    if (data.session) {
+                        currentUser = data.session.user;
+                        updateAuthUI();
+                        await loadCartFromSupabase();
+                        console.log('Session restored:', currentUser.email);
+                    }
+                } catch (error) {
+                    console.error('Session restore error:', error);
+                }
+            }
+        }
+
+        async function loadCartFromSupabase() {
+            if (!supabase || !currentUser) return;
+            
+            try {
+                const { data } = await supabase
+                    .from('cart_items')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+                
+                if (data) {
+                    cart = data.map(row => {
+                        const fruit = fruits.find(f => f.id === row.product_id);
+                        return fruit ? { ...fruit, quantity: row.quantity } : null;
+                    }).filter(item => item !== null);
+                    updateCartUI();
+                    console.log('Cart loaded from Supabase:', cart.length, 'items');
+                }
+            } catch (error) {
+                console.error('Error loading cart from Supabase:', error);
+            }
         }
 
         // Checkout functions
@@ -894,7 +1085,7 @@
             console.log('Checkout modal closed');
         }
 
-        function placeOrder() {
+        async function placeOrder() {
             console.log('Placing order');
             const name = document.getElementById('checkout-name').value;
             const email = document.getElementById('checkout-email').value;
@@ -908,7 +1099,53 @@
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
-            // Create order record
+            if (supabase && currentUser) {
+                try {
+                    // Save order to Supabase
+                    const { data: order, error: orderError } = await supabase
+                        .from('orders')
+                        .insert({
+                            user_id: currentUser.id,
+                            total: total,
+                            status: 'pending',
+                            payment_method: 'cash',
+                            customer_name: name,
+                            customer_email: email,
+                            customer_phone: phone,
+                            customer_address: address
+                        })
+                        .select()
+                        .single();
+                    
+                    if (orderError) {
+                        alert('Failed to save order: ' + orderError.message);
+                        return;
+                    }
+                    
+                    // Save order items
+                    for (const item of cart) {
+                        await supabase.from('order_items').insert({
+                            order_id: order.id,
+                            product_id: item.id,
+                            quantity: item.quantity,
+                            price: item.price
+                        });
+                    }
+                    
+                    // Clear cart from Supabase
+                    await supabase.from('cart_items')
+                        .delete()
+                        .eq('user_id', currentUser.id);
+                    
+                    console.log('Order saved to Supabase:', order.id);
+                } catch (error) {
+                    console.error('Supabase order error:', error);
+                    alert('Order failed to save to database. Please try again.');
+                    return;
+                }
+            }
+            
+            // Local order record
             const newOrder = {
                 id: Date.now(),
                 items: [...cart],
@@ -937,6 +1174,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded, initializing...');
             init();
+            restoreSession();
             console.log('App ready!');
         });
     </script>
