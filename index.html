@@ -791,15 +791,21 @@
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
-            // Save order to Supabase
-            const { data: order, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                    user_id: currentUser.id,
-                    total: total
-                })
-                .select()
-                .single();
+            // Save order to Supabase with customer info
+const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert({
+        user_id: currentUser.id,
+        total: total,
+        status: 'pending',
+        payment_method: 'cash',
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phone,
+        customer_address: address
+    })
+    .select()
+    .single();
             
             if (orderError) {
                 alert('Failed to save order: ' + orderError.message);
