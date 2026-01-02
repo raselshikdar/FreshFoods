@@ -326,6 +326,9 @@
         let currentCategory = 'all';
         let currentSearch = '';
         let orders = [];
+        
+        // Admin configuration
+        const ADMIN_EMAIL = "admin@freshfruits.com";
 
         // Mock fruit data
         const fruits = [
@@ -500,26 +503,41 @@
         }
 
         // Cart functions
-        function addToCart(fruitId) {
-            const fruit = fruits.find(f => f.id === fruitId);
-            if (!fruit) return;
-            
-            const existingItem = cart.find(item => item.id === fruitId);
-            if (existingItem) {
-                existingItem.quantity += 1;
-            } else {
-                cart.push({...fruit, quantity: 1});
+        async function addToCart(fruitId) {
+            if (!currentUser) {
+                showAuthModal('login');
+                return;
             }
             
+            const existing = cart.find(i => i.id === fruitId);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                const fruit = fruits.find(f => f.id === fruitId);
+                cart.push({ ...fruit, quantity: 1 });
+            }
+            
+            await supabase.from('cart_items').upsert({
+                user_id: currentUser.id,
+                product_id: fruitId,
+                quantity: cart.find(i => i.id === fruitId).quantity
+            });
+            
             updateCartUI();
         }
 
-        function removeFromCart(fruitId) {
+        async function removeFromCart(fruitId) {
             cart = cart.filter(item => item.id !== fruitId);
+            if (currentUser) {
+                await supabase.from('cart_items')
+                    .delete()
+                    .eq('user_id', currentUser.id)
+                    .eq('product_id', fruitId);
+            }
             updateCartUI();
         }
 
-        function updateQuantity(fruitId, newQuantity) {
+        async function updateQuantity(fruitId, newQuantity) {
             if (newQuantity <= 0) {
                 removeFromCart(fruitId);
                 return;
@@ -528,6 +546,14 @@
             const item = cart.find(item => item.id === fruitId);
             if (item) {
                 item.quantity = newQuantity;
+                if (currentUser) {
+                    await supabase.from('cart_items')
+                        .upsert({
+                            user_id: currentUser.id,
+                            product_id: fruitId,
+                            quantity: newQuantity
+                        });
+                }
                 updateCartUI();
             }
         }
@@ -683,11 +709,15 @@
             if (currentUser) {
                 userSection.classList.remove('hidden');
                 authSection.classList.add('hidden');
-                welcomeText.textContent = `Hi, ${currentUser.email.split('@')[0]}!`;
+                welcomeText.textContent = `Hi, ${currentUser.email}`;
             } else {
                 userSection.classList.add('hidden');
                 authSection.classList.remove('hidden');
             }
+        }
+
+        function isAdmin() {
+            return currentUser && currentUser.email === ADMIN_EMAIL;
         }
 
         async function logout() {
@@ -700,6 +730,24 @@
             if (data.session) {
                 currentUser = data.session.user;
                 updateAuthUI();
+                loadCartFromSupabase();
+            }
+        }
+
+        async function loadCartFromSupabase() {
+            if (!currentUser) return;
+            
+            const { data } = await supabase
+                .from('cart_items')
+                .select('*')
+                .eq('user_id', currentUser.id);
+            
+            if (data) {
+                cart = data.map(row => {
+                    const fruit = fruits.find(f => f.id === row.product_id);
+                    return fruit ? { ...fruit, quantity: row.quantity } : null;
+                }).filter(item => item !== null);
+                updateCartUI();
             }
         }
 
@@ -730,7 +778,7 @@
             document.getElementById('checkout-modal').classList.add('hidden');
         }
 
-        function placeOrder() {
+        async function placeOrder() {
             const name = document.getElementById('checkout-name').value;
             const email = document.getElementById('checkout-email').value;
             const phone = document.getElementById('checkout-phone').value;
@@ -742,8 +790,40 @@
             }
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            // Save order to Supabase
+            const { data: order, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                    user_id: currentUser.id,
+                    total: total
+                })
+                .select()
+                .single();
+            
+            if (orderError) {
+                alert('Failed to save order: ' + orderError.message);
+                return;
+            }
+            
+            // Save order items
+            for (const item of cart) {
+                await supabase.from('order_items').insert({
+                    order_id: order.id,
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    price: item.price
+                });
+            }
+            
+            // Clear cart from Supabase
+            await supabase.from('cart_items')
+                .delete()
+                .eq('user_id', currentUser.id);
+            
+            // Local order record
             const newOrder = {
-                id: Date.now(),
+                id: order.id,
                 items: [...cart],
                 total: total,
                 status: 'pending',
